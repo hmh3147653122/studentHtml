@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- 引入jquery  -->
+    <script type="text/javascript" src="/js/jquery-3.3.1.min.js"></script>
+    <!-- 引入bootstrap -->
+    <link href="/js/bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+    <script type="text/javascript" src="/js/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
+
+    <!-- 引入bootbox -->
+    <script type="text/javascript" src="/js/bootbox/bootbox.all.min.js"></script>
+    <link href="/js/bootbox/animate.css" rel="stylesheet" type="text/css"/>
+    <!-- 引入datatables -->
+    <link href="/js/DataTables/css/jquery.dataTables.min.css" rel="stylesheet" type="text/css"/>
+    <script type="text/javascript" src="/js/DataTables/js/jquery.dataTables.min.js"></script>
+    <!--引入 日期插件  -->
+    <link href="/js/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css" rel="stylesheet" type="text/css"/>
+    <script type="text/javascript" src="/js/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js"></script>
+    <script type="text/javascript" src="/js/bootstrap-datetimepicker/js/locales/bootstrap-datetimepicker.zh-CN.js"></script>
+    <!-- 引入fileinput -->
+    <link href="/js/bootstrap-fileinput-v5.0.6-17/css/fileinput.min.css" rel="stylesheet" type="text/css"/>
+    <script type="text/javascript" src="/js/bootstrap-fileinput-v5.0.6-17/js/fileinput.min.js"></script>
+    <title>学生管理</title>
+</head>
+<script type="text/javascript">
+    $(function () {
+      initStudentList()
+    })
+    var StudentListlogin;
+    function initStudentList(){
+        StudentListlogin =  $("#studentTable").DataTable({
+            "serverSide": true,//开启服务端分页
+            ajax:{
+                url:"http://localhost:8088/student/queryStudentList",
+                type:"post",
+
+            },
+
+            searching: false,//是否启用搜索
+            ordering:true,//是否启用排序
+            processing:true,//开启请求进度
+            language: {//国际化
+                "sProcessing": "处理中...",
+                "sLengthMenu": "每页 _MENU_ 条数据",
+                "sZeroRecords": "没有匹配结果",
+                "sInfo": "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
+                "sInfoEmpty": "显示第 0 至 0 项结果，共 0 项",
+                "sInfoFiltered": "(由 _MAX_ 项结果过滤)",
+                "sInfoPostFix": "",
+                "sSearch": "搜索:",
+                "sUrl": "",
+                "sEmptyTable": "表中数据为空",
+                "sLoadingRecords": "载入中...",
+                "sInfoThousands": ",",
+                "oPaginate": {
+                    "sFirst": "首页",
+                    "sPrevious": "上页",
+                    "sNext": "下页",
+                    "sLast": "末页"
+                },
+                "oAria": {
+                    "sSortAscending": ": 以升序排列此列",
+                    "sSortDescending": ": 以降序排列此列"
+                }
+            },
+
+            lengthMenu:[3,6,9],
+            searching: false,
+            ordering:  false,
+
+            columns: [
+                {"title":"序号",data:"id"},
+                {"title":"学生姓名",data:"name"},
+                {"title":"年龄",data:"age"},
+                {"title":"地区",data:"address"},
+
+                {title:"学生图片", data: 'imgPath', "render": function(data,type,row,meta){
+                        var img = '<img src="'+data+'" width="50px">';
+                        return img;
+                    }
+                },
+                {"title":"生日",data:"birthday","render": function(data,type,row,meta){
+                        if(data == undefined || data == ""){
+                            return "";
+                        }
+                        var date = new Date(data);
+                        return timestampToTime(date);
+                    }
+                },
+                { "title":"操作",data:"id","render": function ( data, type, full, meta ) {
+                        var str='<button onclick="initUpdateStudentDiv('+data+')" class="btn btn-info"><span class="glyphicon glyphicon-pencil"></span>修改</button>';
+                        str += '<button class="btn btn-danger" onclick="deleteStudent('+data+')"><span class="glyphicon glyphicon-remove"></span>删除</button>';
+                        return str;
+                    }},
+            ]
+
+        });
+    }
+    //时间转换
+    function timestampToTime(date) {
+        Y = date.getFullYear() + '-';
+        M = (date.getMonth()+1 < 10 ? '0'+(date.getMonth()+1) : date.getMonth()+1) + '-';
+        D = date.getDate() + ' ';
+        return Y+M+D;
+    }
+    function initDate() {
+        //初始化日期插件
+        $("#birthday",addDrugDialog).datetimepicker({//选择年月日
+            format: 'yyyy-mm-dd',  //显示格式
+            language:"zh-CN",
+            minView: "decade",//设置只显示到月份
+            endDate : new Date()//限制时间范围    startDate:
+        });$("#expiredDate",addDrugDialog).datetimepicker({//选择年月日
+            format: 'yyyy-mm-dd',  //显示格式
+            language:"zh-CN",
+            minView: "decade",//设置只显示到月份
+            endDate : new Date()//限制时间范围    startDate:
+        });
+    }
+
+    //新增
+    var addDrugDialog;
+    function addStudentDiv() {
+        var html = $("#showDrugDiv").html();
+        addDrugDialog = bootbox.dialog({
+            title: '新增学生信息',
+            message:html
+        });
+        //加载修改中的文件上传
+        $("#uploadStudentfile",addDrugDialog).fileinput({
+            language: 'zh', //设置语言
+
+            uploadUrl:"http://localhost:8088/student/uploadFile",
+            allowedFileExtensions: ['jpg', 'gif', 'png'],//接收的文件后缀
+
+            uploadAsync: true, //默认异步上传
+
+            showUpload:true, //是否显示上传按钮
+
+            showRemove :true, //显示移除按钮
+
+            showPreview :true, //是否显示预览
+
+            showCaption:false,//是否显示标题
+
+            browseClass:"btn btn-success", //按钮样式
+
+            dropZoneEnabled: false//是否显示拖拽区域
+        }).on("fileuploaded", function(e, data, previewiId, index) {
+            if(data.response.code==200){
+                $("#imgPath",addDrugDialog).val(data.response.filePath);
+            }
+            if(data.response.code==201){
+                bootbox.alert("上传文件出错，信息为"+data.remark);
+            }
+        });
+        initDate();
+    }
+    //新增的ajax
+    function addStudentAjax() {
+        var name=$("#name",addDrugDialog).val();
+        var age=$("#age",addDrugDialog).val();
+        var birthday = $("#birthday",addDrugDialog).val();
+        var address=$("#address",addDrugDialog).val();
+        var imgPath = $("#imgPath",addDrugDialog).val();
+        $.post({
+            url:"http://localhost:8088/student/addStudent",
+            data:{
+                "name":name,
+                "age":age,
+                "birthday":birthday,
+                "address":address,
+                "imgPath":imgPath,
+            },
+            dataType:"json",
+            success:function (rs) {
+                if(rs.code==200){
+                    bootbox.alert("增加成功")
+                    history.go(0)
+                }else{
+                    bootbox.alert("增加服务端异常")
+                }
+            },error:function () {
+                alert("增加失败")
+            }
+
+        })
+    }
+    //删除
+    function deleteStudent(id) {
+        if(confirm("您确定要删除吗？")){
+            $.post({
+                url:"http://localhost:8088/student/updateIsdel",
+                dataType: "json",
+                data:{
+                    "id":id,
+                },
+                success: function (rs) {
+                    if(rs.code=="200"){
+                        //关闭弹框
+                        bootbox.alert("删除成功");
+                        history.go(0)
+                    }else{
+                        bootbox.alert("服务端异常："+rs.remark);
+                    }
+                },
+                error: function () {
+                    bootbox.alert("删除失败");
+                }
+            })
+        }
+    }
+
+    //修改学生信息
+    var upStudent;
+    function initUpdateStudentDiv(id) {
+        var htmls = $("#updateDiv").html();
+        upStudent = bootbox.dialog({
+            title:'修改学生信息',
+            message:htmls
+        })
+        //加载新增中的文件上传
+        $("#upuploadStudentfile",upStudent).fileinput({
+            language: 'zh', //设置语言
+
+            uploadUrl:"http://localhost:8088/student/uploadFile",
+            allowedFileExtensions: ['jpg', 'gif', 'png'],//接收的文件后缀
+
+            uploadAsync: true, //默认异步上传
+
+            showUpload:true, //是否显示上传按钮
+
+            showRemove :true, //显示移除按钮
+
+            showPreview :true, //是否显示预览
+
+            showCaption:false,//是否显示标题
+
+            browseClass:"btn btn-success", //按钮样式
+
+            dropZoneEnabled: false//是否显示拖拽区域
+        }).on("fileuploaded", function(e, data, previewiId, index) {
+            if(data.response.code==200){
+                $("#upimgPath",upStudent).val(data.response.filePath);
+            }
+            if(data.response.code==201){
+                bootbox.alert("上传文件出错，信息为"+data.remark);
+            }
+        });
+       initDate();
+
+
+        //回显
+        $.post({
+            url:"http://localhost:8088/student/queryStudentById",
+            data:{"id":id},
+            dataType:"json",
+            success:function (rs) {
+                alert(JSON.stringify(rs))
+                $("#upname",upStudent).val(rs.data.name);
+                $("#upid",upStudent).val(rs.data.id);
+                $("#upaddress",upStudent).val(rs.data.address);
+                $("#upbirthday",upStudent).each(function (){
+                    var data =new Date(rs.data.birthday);
+                    var a = timestampToTime(data);
+                    $("#upbirthday",upStudent).val(a);
+                });
+                $("#upimgPath",upStudent).val(rs.data.imgPath)
+                $("#img",upStudent).attr("src",rs.data.imgPath)
+            },error:function () {
+                bootbox.alert("回显失败")
+            }
+        })
+    }
+
+    //修改的ajax
+    function updateStudent() {
+        var id = $("#upid",upStudent).val();
+        var name = $("#upname",upStudent).val();
+        var address = $("#upaddress",upStudent).val();
+        var birthday = $("#upbirthday",upStudent).val();
+        var imgPath = $("#upimgPath",upStudent).val();
+        $.post({
+            url:"http://localhost:8088/student/updateStudent",
+            data:{
+                "id":id,
+                "name":name,
+                "address":address,
+                "birthday":birthday,
+                "imgPath":imgPath,
+            },
+            dataType:"json",
+            success:function (rs) {
+                /*alert(JSON.stringify(rs))*/
+                if(rs.code==200){
+                    bootbox.alert("修改成功");
+                    history.go(0)
+                }else {
+                    bootbox.alert("修改异常，"+rs.remark)
+                }
+            },error:function () {
+                bootbox.alert("修改失败")
+            }
+        })
+    }
+</script>
+<body>
+<!--列表展示-->
+<div class="panel panel-primary">
+    <div class="panel-heading">
+        <h3 class="panel-title">学生信息展示</h3>
+    </div>
+    <div class="panel-body">
+        <div id="studentDiv">
+            <table id="studentTable" class="table table-bordered table-hover table-condensed">
+            </table>
+        </div>
+    </div>
+    <button class="btn btn-primary" onclick="addStudentDiv()"><span class="glyphicon glyphicon-plus"></span>新增学生信息</button>
+
+    <!--新增药品-->
+    <!-- 新增商品信息-->	<!-- style="display: none" -->
+    <div id="showDrugDiv" style="display: none">
+        <div class="modal-body">
+            <div class="form-group">
+                <label  class="col-sm-2 control-label">学生姓名</label>
+                <div class="col-sm-10">
+                    <input style="width: 250px" type="text"  class="form-control"  id="name" placeholder="请输入学生姓名">
+                </div>
+            </div><br><br>
+
+            <div class="form-group">
+                <label  class="col-sm-2 control-label">学生年龄</label>
+                <div  class="col-sm-3">
+                    <input style="width: 250px" type="number"  class="form-control"  id="age" placeholder="请输入学生年龄">
+                </div>
+
+            </div><br><br>
+
+            <div class="form-group">
+                <label  class="col-sm-2 control-label">学生地址</label>
+                <div  class="col-sm-3">
+                    <input style="width: 250px" type="text"  class="form-control"  id="address" placeholder="请输入学生地址">
+                </div>
+
+            </div><br><br>
+
+            <div class="form-group">
+                <label class="col-sm-2 control-label">生日</label>
+                <div class="col-sm-10">
+                    <input type="text" readonly="readonly" class="form-control" id="birthday" style="width: 250px">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label  class="col-sm-2 control-label">学生图片</label>
+                <div class="col-sm-10">
+                    <input type="file" name="picture" id="uploadStudentfile">
+                    <input type="hidden" id="imgPath">
+                </div>
+            </div><br>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger"
+                        data-dismiss="modal" >关闭
+                </button>
+                <button onclick="addStudentAjax()"  class="btn btn-success">
+                    新增
+                </button>
+            </div>
+
+
+        </div>
+
+    </div>
+
+    <!--修改学生信息-->
+    <div id="updateDiv" style="display: none">
+        <form class="form-horizontal" role="form">
+            <div class="form-group">
+                <label  class="col-sm-2 control-label">姓名</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" id="upname"
+                           name="name"    placeholder="请输入姓名" style="width: 250px">
+                    <input type="hidden" id="upid">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-sm-2 control-label">地址</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" id="upaddress"
+                           name="name"    placeholder="请输入地址" style="width: 250px">
+                </div>
+            </div>
+
+
+            <div class="form-group">
+                <label class="col-sm-2 control-label">生日</label>
+                <div class="col-sm-10">
+                    <input type="text" readonly="readonly" class="form-control" id="upbirthday"
+                           placeholder="请输入生日" style="width: 250px">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-sm-2 control-label">图片</label>
+                <div class="col-sm-10">
+                    <input type="file" id="upuploadStudentfile" name="picture">
+                    <input type="hidden" id="upimgPath">
+                    <img src="" id="img" width="50px">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-sm-offset-2 col-sm-10">
+                    <input type="button" onclick="updateStudent()" class="btn btn-success" value="修改">
+                    <input type="button" class="btn btn-info" value="重置">
+                </div>
+            </div>
+        </form>
+    </div>
+
+
+</div>
+
+</body>
+</html>
